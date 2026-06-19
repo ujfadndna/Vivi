@@ -1,0 +1,95 @@
+{
+  "name": "vivi-desktop",
+  "version": "0.1.1",
+  "private": true,
+  "author": "Vivi",
+  "description": "Vivi desktop launcher",
+  "main": "src/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "electron .",
+    "dist:win": "electron-builder --win nsis",
+    "pack:win": "electron-builder --win dir"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "app.vivi.desktop",
+    "productName": "Vivi",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../app",
+        "to": "runtime-template/app",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../frontend",
+        "to": "runtime-template/frontend",
+        "filter": [
+          "Dockerfile",
+          "nginx.conf",
+          "index.html",
+          "package.json",
+          "package-lock.json",
+          "tsconfig.json",
+          "tsconfig.node.json",
+          "vite.config.ts",
+          "src/**/*"
+        ]
+      },
+      {
+        "from": "../scripts/launch_desktop.ps1",
+        "to": "runtime-template/scripts/launch_desktop.ps1"
+      },
+      {
+        "from": "../scripts/stop_desktop.ps1",
+        "to": "runtime-template/scripts/stop_desktop.ps1"
+      },
+      {
+        "from": "../docker-compose.yml",
+        "to": "runtime-template/docker-compose.yml"
+      },
+      {
+        "from": "../Dockerfile.api",
+        "to": "runtime-template/Dockerfile.api"
+      },
+      {
+        "from": "../requirements-docker.txt",
+        "to": "runtime-template/requirements-docker.txt"
+      },
+      {
+        "from": "../.dockerignore",
+        "to": "runtime-template/.dockerignore"
+      },
+      {
+        "from": "../.env.example",
+        "to": "runtime-template/.env.example"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Vivi"
+    }
+  }
+}

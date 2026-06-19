@@ -1,0 +1,40 @@
+# IndexTTS2 真实 TTS 后端的可选安装说明。
+# 启用后在 .env 设 TTS_BACKEND=indextts。
+# 不要把这些依赖合并进 requirements.txt；Mock 链路不需要安装它们。
+
+# 1. 克隆官方仓库到项目根目录默认位置：
+#    git clone https://github.com/index-tts/index-tts.git index-tts
+
+# 2. 安装 PyTorch。
+#    请按本机 CUDA/CPU 环境选择官方推荐版本，下面仅为 CPU 示例：
+#    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# 3. 安装 IndexTTS 官方仓库依赖。
+#    IndexTTS2 不是干净的 pip 库，请优先按官方 README 执行：
+#    cd index-tts
+#    pip install -r requirements.txt
+#    pip install -e .
+
+# 4. 下载 IndexTTS2 权重到 checkpoints。
+#    国内环境可先配置 hf-mirror：
+#    # PowerShell:
+#    $env:HF_ENDPOINT="https://hf-mirror.com"
+#    # cmd:
+#    set HF_ENDPOINT=https://hf-mirror.com
+#    hf download IndexTeam/IndexTTS-2 --local-dir checkpoints
+#    cd ..
+
+# 5. 配置 .env。
+#    TTS_BACKEND=indextts
+#    INDEXTTS_REPO=./index-tts
+#    INDEXTTS_CHECKPOINTS=./index-tts/checkpoints
+#    INDEXTTS_USE_FP16=true
+#    INDEXTTS_USE_DEEPSPEED=false
+
+# 词级时间戳强制对齐；不可用时后端会退化为均匀时间戳。
+# 如果当前环境已经随其它真实 TTS 后端安装 whisperx，可跳过。
+whisperx
+
+# Hugging Face 下载工具。
+huggingface-hub
+descript-audiotools>=0.7.2

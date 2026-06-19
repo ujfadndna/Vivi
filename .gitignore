@@ -1,0 +1,57 @@
+# 虚拟环境
+venv/
+*.egg-info/
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+desktop/node_modules/
+desktop/release/
+desktop/dist/
+desktop/.vite/
+
+# Python 缓存
+__pycache__/
+*.pyc
+.ruff_cache/
+
+# 运行时产物
+workspace/
+*.mp4
+.env
+server.pid
+server.log
+*.log
+
+# 模型权重与下载产物（体积大，不入库）
+checkpoints/
+models/
+model/
+models.zip
+*.zip
+*.pth
+*.bin
+*.safetensors
+downloads.log
+MuseTalk/
+
+# 测试/音频残留
+*.mp3
+*.wav
+
+# 个人输入素材（隐私，不入库）
+Video_input/
+
+# 测试/IDE
+.pytest_cache/
+.vscode/
+.idea/
+.claude/
+.codegraph/
+# HF cache blobs (large model weights)
+checkpoints/hf_cache/
+build_mmcv.ps1
+gen_*.mp4
+agents-md-creator.zip

@@ -1,0 +1,113 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "her"
+version = "0.4.0"
+description = "可控 2D 数字人系统 — Mock 骨架 + 可插拔模型后端"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+dependencies = [
+    # Web / API
+    "fastapi==0.111.0",
+    "uvicorn[standard]==0.30.1",
+    "python-multipart==0.0.9",
+    "pydantic==2.7.1",
+    "pydantic-settings==2.3.0",
+    "cryptography==42.0.8",
+    # 异步任务编排
+    "celery==5.4.0",
+    "redis==5.0.4",
+    # 媒体处理
+    "opencv-python==4.9.0.80",
+    "numpy==1.26.4",
+    "imageio-ffmpeg==0.5.1",
+    "soundfile==0.12.1",
+    # 测试
+    "pytest==8.2.0",
+    "httpx==0.27.0",
+]
+
+[project.optional-dependencies]
+# Agent 对话层（LangGraph + ChromaDB RAG + 工具调用）
+agent = [
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "chromadb>=0.5.0",
+]
+
+# FlashHead 实时渲染（SoulX-FlashHead Lite）
+flashhead = [
+    "opencv-python-headless>=4.12.0",  # ⚠️ 与核心 opencv-python 冲突，pip 会卸载旧包替换
+    "diffusers>=0.34.0",
+    "transformers==4.57.3",
+    "accelerate>=1.8.1",
+    "xfuser>=0.4.3",
+    "librosa",
+    "mediapipe==0.10.9",
+    "loguru",
+    "decord",
+    "pyloudnorm",
+    "flash-attn==2.8.0.post2",
+    "imageio-ffmpeg",
+]
+
+# MuseTalk 嘴型同步
+musetalk = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "openmim",
+    "mmengine",
+    "omegaconf",
+    "transformers",
+    "diffusers",
+    "accelerate",
+    "einops",
+    "librosa",
+    "soundfile",
+    "opencv-python",
+    "numpy",
+    "huggingface-hub",
+]
+
+# RVM 人像分割
+segment = [
+    "torch",
+    "torchvision",
+]
+
+# CosyVoice TTS
+cosyvoice = [
+    "torch",
+    "torchaudio",
+    "cosyvoice",
+    "modelscope",
+    "huggingface-hub",
+    "librosa",
+    "conformer",
+    "diffusers",
+    "HyperPyYAML",
+    "WeTextProcessing",
+    "wetext",
+    "whisperx",
+]
+
+# IndexTTS2 TTS
+indextts = [
+    "whisperx",
+    "huggingface-hub",
+    "descript-audiotools>=0.7.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

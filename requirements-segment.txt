@@ -1,0 +1,31 @@
+# 真实 RVM 分割后端（可选）：只在启用 SEGMENT_BACKEND=local 时需要。
+# 不要把这些重依赖合并进 requirements.txt，Mock 链路不需要安装它们。
+#
+# 1) PyTorch / TorchVision：请按本机 CUDA/CPU 环境选择官方推荐命令安装。
+#    CPU 示例：
+#    pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#
+#    CUDA 12.1 示例：
+#    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#
+# 2) 下载 RVM 权重到项目根目录的 models/rvm/。
+#    推荐文件名：
+#    ./models/rvm/rvm_mobilenetv3.pth
+#
+#    权重来源可选：
+#    - 官方 GitHub release / README 链接：
+#      https://github.com/PeterL1n/RobustVideoMatting
+#    - 国内环境可使用 hf-mirror 或手动下载后放入 ./models/rvm/
+#
+#    如果使用普通 state_dict（非 TorchScript），还需要让官方 RVM 源码中的
+#    model.MattingNetwork 可 import，例如将 RobustVideoMatting 仓库加入 PYTHONPATH。
+#    checkpoint 不存在时后端会回退到 torch.hub.load("PeterL1n/RobustVideoMatting", variant)，
+#    但该方式需要访问 GitHub。
+#
+# 3) .env 中启用：
+#    SEGMENT_BACKEND=local
+#    RVM_VARIANT=mobilenetv3
+#    RVM_CHECKPOINT=./models/rvm/rvm_mobilenetv3.pth
+
+torch
+torchvision

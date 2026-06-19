@@ -1,0 +1,30 @@
+# 真实 TTS（CosyVoice）后端的可选依赖。
+# 安装后在 .env 设 TTS_BACKEND=local 启用。
+# 不要把这些依赖合并进 requirements.txt；Mock 链路不需要安装它们。
+
+# PyTorch / 音频张量处理。按本机 CUDA/CPU 环境选择官方推荐版本。
+# CPU 示例：pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+torch
+torchaudio
+
+# CosyVoice 推理常见依赖。请优先按官方 README 从源码安装并下载模型：
+#   git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git
+#   cd CosyVoice
+#   pip install -r requirements.txt
+#   pip install -e .
+# 模型下载示例见官方 README；默认音色使用 pretrained_models/CosyVoice-300M-SFT，
+# 零样本音色克隆使用 pretrained_models/CosyVoice-300M。
+# 如果当前环境可直接安装 cosyvoice 包，也可以直接使用下一行；
+# 若 PyPI 包不可用，请按上方源码方式安装。
+cosyvoice
+modelscope
+huggingface-hub
+librosa
+conformer
+diffusers
+HyperPyYAML
+WeTextProcessing
+wetext
+
+# 词级时间戳强制对齐；不可用时后端会退化为均匀时间戳。
+whisperx

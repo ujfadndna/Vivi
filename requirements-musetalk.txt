@@ -1,0 +1,53 @@
+# 真实 MuseTalk 后端（可选）：只在启用 MUSETALK_BACKEND=local 时需要。
+# 不要把这些重依赖合并进 requirements.txt，Mock 链路不需要安装它们。
+#
+# 1) 获取官方仓库（MuseTalk 不是 pip 包）：
+#    git clone https://github.com/TMElyralab/MuseTalk.git MuseTalk
+#
+# 2) 按官方 README 安装 MuseTalk 依赖：
+#    cd MuseTalk
+#    pip install -r requirements.txt
+#    pip install --no-cache-dir -U openmim
+#    mim install mmengine
+#    mim install "mmcv==2.0.1"
+#    mim install "mmdet==3.1.0"
+#    mim install "mmpose==1.1.0"
+#
+# 3) 下载权重到项目根目录的 models/（或自行设置 MUSETALK_MODELS_DIR）。
+#    国内环境可先设置镜像：
+#    set HF_ENDPOINT=https://hf-mirror.com
+#    huggingface-cli download TMElyralab/MuseTalk --local-dir models --local-dir-use-symlinks False
+#    huggingface-cli download stabilityai/sd-vae-ft-mse --local-dir models/sd-vae --local-dir-use-symlinks False
+#    huggingface-cli download openai/whisper-tiny --local-dir models/whisper --local-dir-use-symlinks False
+#    huggingface-cli download yzd-v/DWPose --local-dir models/dwpose --local-dir-use-symlinks False
+#    huggingface-cli download ByteDance/LatentSync --local-dir models/syncnet --local-dir-use-symlinks False
+#    face-parse-bisent/79999_iter.pth 需按 MuseTalk README 链接下载；
+#    resnet18-5c106cde.pth 可从 PyTorch 官方模型地址下载。
+#
+# 4) .env 中启用：
+#    MUSETALK_BACKEND=local
+#    MUSETALK_REPO=./MuseTalk
+#    MUSETALK_MODELS_DIR=./models
+#
+# 5) MuseTalk 官方脚本会调用 ffmpeg 命令；请确保 ffmpeg 在 PATH 中可用。
+
+# PyTorch：请优先按本机 CUDA/CPU 环境选择官方推荐命令安装。
+# CUDA 11.8 示例：
+# pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
+torch
+torchvision
+torchaudio
+
+# MuseTalk 官方依赖中常见的重包/工具；仍建议以 MuseTalk/requirements.txt 为准。
+openmim
+mmengine
+omegaconf
+transformers
+diffusers
+accelerate
+einops
+librosa
+soundfile
+opencv-python
+numpy
+huggingface-hub

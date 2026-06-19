@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>数字人 Text-to-Video Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b10;
+      --panel: #111823;
+      --panel-soft: #151f2b;
+      --line: rgba(255, 255, 255, 0.1);
+      --text: #edf3fb;
+      --muted: #8f9aad;
+      --muted-strong: #bcc7d8;
+      --accent: #39d0c8;
+      --accent-2: #ffcc66;
+      --danger: #ff6b7a;
+      --success: #59d88e;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
+      --radius: 8px;
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(57, 208, 200, 0.12), transparent 34rem),
+        radial-gradient(circle at 100% 20%, rgba(255, 204, 102, 0.08), transparent 30rem),
+        linear-gradient(145deg, #080b10 0%, #0a1018 48%, #07090d 100%);
+      color: var(--text);
+    }
+
+    button,
+    textarea,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.62;
+    }
+
+    .shell {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 34px 0 42px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(57, 208, 200, 0.42);
+      border-radius: 8px;
+      background: linear-gradient(145deg, rgba(57, 208, 200, 0.16), rgba(255, 255, 255, 0.03));
+      color: var(--accent);
+      box-shadow: 0 10px 34px rgba(57, 208, 200, 0.1);
+    }
+
+    .mark svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 38px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .health {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted-strong);
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 0 4px rgba(255, 204, 102, 0.12);
+    }
+
+    .health.is-ok .dot {
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(89, 216, 142, 0.14);
+    }
+
+    .health.is-bad .dot {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255, 107, 122, 0.14);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(17, 24, 35, 0.86);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 18px 0;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--muted-strong);
+      letter-spacing: 0;
+    }
+
+    .panel-body {
+      padding: 18px;
+    }
+
+    .form {
+      display: grid;
+      gap: 16px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      color: var(--muted-strong);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    textarea,
+    select,
+    input {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: #0b1017;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    }
+
+    textarea:focus,
+    select:focus,
+    input:focus {
+      border-color: rgba(57, 208, 200, 0.65);
+      box-shadow: 0 0 0 3px rgba(57, 208, 200, 0.12);
+      background: #0d141d;
+    }
+
+    textarea {
+      min-height: 178px;
+      resize: vertical;
+      padding: 14px;
+      line-height: 1.62;
+    }
+
+    textarea::placeholder,
+    input::placeholder {
+      color: #697587;
+    }
+
+    select,
+    input {
+      height: 42px;
+      padding: 0 12px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 2px;
+    }
+
+    .primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #39d0c8, #69e6a8);
+      color: #06100f;
+      font-weight: 800;
+      box-shadow: 0 12px 30px rgba(57, 208, 200, 0.22);
+    }
+
+    .secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted-strong);
+      font-weight: 700;
+    }
+
+    .btn-icon {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+
+    .status-line {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .status-line strong {
+      color: var(--text);
+    }
+
+    .task-id {
+      display: none;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .task-id.is-visible {
+      display: block;
+    }
+
+    .progress-wrap {
+      display: grid;
+      gap: 18px;
+    }
+
+    .overall {
+      display: grid;
+      gap: 8px;
+    }
+
+    .overall-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted-strong);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .track {
+      position: relative;
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #39d0c8, #69e6a8);
+      transition: width 0.26s ease;
+    }
+
+    .stage-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 92px 1fr 74px;
+      align-items: center;
+      gap: 12px;
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .stage-name {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .stage .track {
+      height: 7px;
+    }
+
+    .stage-status {
+      justify-self: end;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .stage.is-complete .stage-status {
+      color: var(--success);
+    }
+
+    .stage.is-active .fill {
+      background: linear-gradient(90deg, #39d0c8, #ffcc66);
+    }
+
+    .stage.is-failed .stage-status {
+      color: var(--danger);
+    }
+
+    .video-box {
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      background: #05070a;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #05070a;
+      object-fit: contain;
+    }
+
+    .empty-video {
+      display: grid;
+      place-items: center;
+      min-height: 340px;
+      padding: 24px;
+      color: var(--muted);
+      text-align: center;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        #05070a;
+      background-size: 28px 28px;
+    }
+
+    .empty-video.is-hidden,
+    video.is-hidden {
+      display: none;
+    }
+
+    .message {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 13px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .message.is-visible {
+      display: block;
+    }
+
+    .message.error {
+      border: 1px solid rgba(255, 107, 122, 0.3);
+      background: rgba(255, 107, 122, 0.1);
+      color: #ffd3d8;
+    }
+
+    .message.success {
+      border: 1px solid rgba(89, 216, 142, 0.28);
+      background: rgba(89, 216, 142, 0.1);
+      color: #cff8dd;
+    }
+
+    .message.info {
+      border: 1px solid rgba(57, 208, 200, 0.25);
+      background: rgba(57, 208, 200, 0.08);
+      color: #c7f8f5;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 920px) {
+      .shell {
+        width: min(100% - 28px, 720px);
+        padding-top: 22px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .primary,
+      .secondary {
+        width: 100%;
+      }
+
+      .stage {
+        grid-template-columns: 78px 1fr 56px;
+        gap: 8px;
+        padding: 10px;
+      }
+
+      .empty-video {
+        min-height: 250px;
+      }
+    }
+
+    .stage.is-playing .stage-name {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .stage.is-playing .stage-name::before {
+      content: "\25B6 ";
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M8 4.75h8a3.25 3.25 0 0 1 3.25 3.25v8A3.25 3.25 0 0 1 16 19.25H8A3.25 3.25 0 0 1 4.75 16V8A3.25 3.25 0 0 1 8 4.75Z" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M9 10.25h.01M15 10.25h.01M9.3 14.2c1.45 1.3 3.95 1.3 5.4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>数字人 Text-to-Video</h1>
+          <p class="subtitle">分句流式渲染，首句就绪即播放</p>
+        </div>
+      </div>
+      <div id="healthBadge" class="health" title="GET /health">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="healthText">检查服务中</span>
+      </div>
+    </header>
+
+    <section class="grid">
+      <form id="taskForm" class="panel form" autocomplete="off">
+        <div class="panel-header">
+          <h2 class="panel-title">输入</h2>
+        </div>
+        <div class="panel-body form">
+          <label for="textInput">
+            文本内容
+            <textarea
+              id="textInput"
+              name="text"
+              maxlength="2000"
+              placeholder="输入多句中文文本（用句号分隔）。例如：你好，很高兴认识你。今天天气真不错。我们聊聊吧。"
+              required
+            ></textarea>
+          </label>
+
+          <div class="row">
+            <label for="backgroundType">
+              背景
+              <select id="backgroundType" name="background_type">
+                <option value="static" selected>静态背景</option>
+                <option value="dynamic_video">动态视频</option>
+                <option value="generated">生成背景</option>
+              </select>
+            </label>
+            <label for="apiBase">
+              API
+              <input id="apiBase" name="api_base" type="url" spellcheck="false">
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="submitBtn" class="primary" type="submit">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              提交生成
+            </button>
+            <button id="clearBtn" class="secondary" type="button">重置</button>
+          </div>
+
+          <div id="statusLine" class="status-line">等待提交任务</div>
+          <div id="taskIdLine" class="task-id"></div>
+          <div id="message" class="message" role="status" aria-live="polite"></div>
+        </div>
+      </form>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">生成状态</h2>
+        </div>
+        <div class="panel-body progress-wrap">
+          <div class="overall">
+            <div class="overall-meta">
+              <span id="overallLabel">总进度</span>
+              <span id="overallPercent">0%</span>
+            </div>
+            <div class="track" aria-hidden="true">
+              <div id="overallFill" class="fill"></div>
+            </div>
+          </div>
+
+          <div id="stageList" class="stage-list" aria-label="阶段进度"></div>
+
+          <div class="video-box">
+            <div id="emptyVideo" class="empty-video">首句渲染完成后自动播放，后续句子无缝衔接</div>
+            <video id="resultVideo" class="is-hidden" controls playsinline></video>
+          </div>
+
+          <div class="footer-note">
+            默认接口：POST /api/v1/generate-text-only，GET /api/v1/generate/{task_id}，GET /outputs/{filename}
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const DEFAULT_API_BASE = "http://localhost:8000";
+    const POLL_INTERVAL_MS = 1800;
+    const STAGES = [
+      { id: "tts", label: "TTS", aliases: ["tts", "audio", "audio_synthesis", "speech", "synthesis"] },
+      { id: "musetalk", label: "MuseTalk", aliases: ["musetalk", "lip_sync", "lipSync", "mouth", "avatar"] },
+      { id: "rvm", label: "RVM", aliases: ["rvm", "segmentation", "segment", "matting", "foreground"] },
+      { id: "compose", label: "合成", aliases: ["compose", "composite", "composition", "render", "merge", "video"] }
+    ];
+
+    const $ = (selector) => document.querySelector(selector);
+    const taskForm = $("#taskForm");
+    const textInput = $("#textInput");
+    const backgroundType = $("#backgroundType");
+    const apiBaseInput = $("#apiBase");
+    const submitBtn = $("#submitBtn");
+    const clearBtn = $("#clearBtn");
+    const healthBadge = $("#healthBadge");
+    const healthText = $("#healthText");
+    const statusLine = $("#statusLine");
+    const taskIdLine = $("#taskIdLine");
+    const message = $("#message");
+    const overallFill = $("#overallFill");
+    const overallPercent = $("#overallPercent");
+    const stageList = $("#stageList");
+    const emptyVideo = $("#emptyVideo");
+    const resultVideo = $("#resultVideo");
+
+    let currentTaskId = "";
+    let pollTimer = 0;
+    let abortController = null;
+
+    // 分句流水线状态
+    let segments = []; // [{sentence, taskId, status, videoUrl}]
+    let currentPlayIndex = 0;
+    let isPlaying = false;
+    let segmentPollers = [];
+
+    init();
+
+    function init() {
+      apiBaseInput.value = getInitialApiBase();
+      resetProgress();
+      bindEvents();
+      checkHealth();
+    }
+
+    function bindEvents() {
+      taskForm.addEventListener("submit", handleSubmit);
+      clearBtn.addEventListener("click", resetAll);
+      resultVideo.addEventListener("ended", onVideoEnded);
+      apiBaseInput.addEventListener("change", () => {
+        apiBaseInput.value = normalizeBaseUrl(apiBaseInput.value);
+        localStorage.setItem("demoApiBase", apiBaseInput.value);
+        checkHealth();
+      });
+    }
+
+    function getInitialApiBase() {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = params.get("api");
+      const fromStorage = localStorage.getItem("demoApiBase");
+      return normalizeBaseUrl(fromQuery || fromStorage || DEFAULT_API_BASE);
+    }
+
+    function normalizeBaseUrl(value) {
+      const trimmed = String(value || "").trim();
+      return trimmed.replace(/\/+$/, "") || DEFAULT_API_BASE;
+    }
+
+    function apiUrl(path) {
+      const base = normalizeBaseUrl(apiBaseInput.value);
+      if (path.startsWith("http://") || path.startsWith("https://")) {
+        return path;
+      }
+      return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+    }
+
+    async function checkHealth() {
+      setHealth("checking", "检查服务中");
+      try {
+        const response = await fetch(apiUrl("/health"), { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        setHealth("ok", "服务可用");
+      } catch (error) {
+        setHealth("bad", "服务不可用");
+      }
+    }
+
+    function setHealth(state, text) {
+      healthBadge.classList.toggle("is-ok", state === "ok");
+      healthBadge.classList.toggle("is-bad", state === "bad");
+      healthText.textContent = text;
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      const text = textInput.value.trim();
+      if (!text) {
+        showMessage("请输入文本内容。", "error");
+        textInput.focus();
+        return;
+      }
+
+      stopAllPolling();
+      resetVideo();
+      resetProgress();
+      showMessage("", "");
+      setBusy(true);
+
+      abortController = new AbortController();
+      segments = [];
+      currentPlayIndex = 0;
+      isPlaying = false;
+
+      // 分句（中文句号、感叹号、问号）
+      const sentences = splitSentences(text);
+      if (sentences.length === 0) {
+        showMessage("无法分句，请检查输入。", "error");
+        setBusy(false);
+        return;
+      }
+
+      setStatus(`分句完成：${sentences.length} 句，正在提交...`);
+      renderSegmentProgress(sentences);
+
+      // 并发提交所有句子
+      localStorage.setItem("demoApiBase", normalizeBaseUrl(apiBaseInput.value));
+      for (let i = 0; i < sentences.length; i++) {
+        segments.push({ sentence: sentences[i], taskId: null, status: "submitting", videoUrl: null });
+      }
+
+      try {
+        const submitPromises = sentences.map((sentence, i) => submitSentence(sentence, i));
+        await Promise.all(submitPromises);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          failUi(error.message || "提交失败。");
+        }
+        setBusy(false);
+        return;
+      }
+
+      setStatus(`全部提交完成，等待渲染...`);
+      showMessage(`${sentences.length} 句已提交，首句完成后自动播放。`, "info");
+
+      // 为每个 segment 启动独立轮询
+      for (let i = 0; i < segments.length; i++) {
+        if (segments[i].taskId) {
+          startSegmentPolling(i);
+        }
+      }
+    }
+
+    function splitSentences(text) {
+      const pattern = /[^。！？]+(?:[。！？]+|$)/g;
+      const matches = text.match(pattern) || [];
+      return matches.map(s => s.trim()).filter(Boolean);
+    }
+
+    async function submitSentence(sentence, index) {
+      const formData = new FormData();
+      formData.append("text", sentence);
+      formData.append("language", "zh");
+      formData.append("emotion", "neutral");
+      formData.append("background_mode", backgroundType.value || "static");
+
+      const response = await fetch(apiUrl("/api/v1/generate-text-only"), {
+        method: "POST",
+        body: formData,
+        signal: abortController.signal,
+      });
+
+      const payload = await readJsonResponse(response);
+      if (!response.ok) {
+        segments[index].status = "failed";
+        updateSegmentUI();
+        throw new Error(extractError(payload, `第${index + 1}句提交失败`));
+      }
+
+      segments[index].taskId = payload.task_id || "";
+      segments[index].status = "queued";
+      updateSegmentUI();
+    }
+
+    function startSegmentPolling(index) {
+      const poll = () => pollSegment(index);
+      poll();
+      const timer = window.setInterval(poll, POLL_INTERVAL_MS);
+      segmentPollers.push(timer);
+    }
+
+    async function pollSegment(index) {
+      const seg = segments[index];
+      if (!seg.taskId || seg.status === "completed" || seg.status === "failed") return;
+
+      try {
+        const response = await fetch(apiUrl(`/api/v1/generate/${encodeURIComponent(seg.taskId)}`), {
+          cache: "no-store",
+        });
+        const payload = await readJsonResponse(response);
+        if (!response.ok) return;
+
+        const status = String(payload.status || "").toLowerCase();
+        if (status === "completed" || status === "success") {
+          seg.status = "completed";
+          seg.videoUrl = payload.video_url || payload.output_url || "";
+          updateSegmentUI();
+          tryPlayNext();
+          checkAllDone();
+        } else if (status === "failed" || status === "error") {
+          seg.status = "failed";
+          updateSegmentUI();
+          checkAllDone();
+        } else {
+          seg.status = "processing";
+          updateSegmentUI();
+        }
+      } catch (e) { /* ignore transient errors */ }
+    }
+
+    function tryPlayNext() {
+      if (isPlaying) return;
+      const seg = segments[currentPlayIndex];
+      if (!seg || seg.status !== "completed" || !seg.videoUrl) return;
+
+      isPlaying = true;
+      const url = apiUrl(seg.videoUrl);
+      emptyVideo.classList.add("is-hidden");
+      resultVideo.classList.remove("is-hidden");
+      resultVideo.src = url;
+      resultVideo.load();
+
+      setStatus(`正在播放第 ${currentPlayIndex + 1}/${segments.length} 句`);
+
+      const playPromise = resultVideo.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+          showMessage("浏览器阻止了自动播放，请点击视频播放。", "info");
+        });
+      }
+    }
+
+    function onVideoEnded() {
+      isPlaying = false;
+      currentPlayIndex++;
+      if (currentPlayIndex < segments.length) {
+        const next = segments[currentPlayIndex];
+        if (next.status === "completed" && next.videoUrl) {
+          tryPlayNext();
+        } else {
+          setStatus(`等待第 ${currentPlayIndex + 1} 句渲染完成...`);
+          // 下一句 ready 时 tryPlayNext 会被 pollSegment 触发
+        }
+      } else {
+        setStatus("全部播放完成");
+        showMessage("所有句子已播放完毕。", "success");
+        setBusy(false);
+      }
+    }
+
+    function checkAllDone() {
+      const allDone = segments.every(s => s.status === "completed" || s.status === "failed");
+      if (allDone) {
+        stopAllPolling();
+        updateOverall(1);
+      }
+    }
+
+    function stopAllPolling() {
+      stopPolling();
+      for (const t of segmentPollers) window.clearInterval(t);
+      segmentPollers = [];
+    }
+
+    function renderSegmentProgress(sentences) {
+      stageList.innerHTML = sentences.map((s, i) => `
+        <div class="stage" data-seg="${i}">
+          <div class="stage-name">句${i + 1}</div>
+          <div class="track"><div class="fill"></div></div>
+          <div class="stage-status">等待</div>
+        </div>
+      `).join("");
+    }
+
+    function updateSegmentUI() {
+      const completedCount = segments.filter(s => s.status === "completed").length;
+      updateOverall(completedCount / segments.length);
+
+      for (let i = 0; i < segments.length; i++) {
+        const node = stageList.querySelector(`[data-seg="${i}"]`);
+        if (!node) continue;
+        const seg = segments[i];
+        const fill = node.querySelector(".fill");
+        const label = node.querySelector(".stage-status");
+
+        let percent = 0, text = "等待", stateClass = "";
+        if (seg.status === "completed") { percent = 1; text = "完成"; stateClass = "is-complete"; }
+        else if (seg.status === "processing") { percent = 0.5; text = "渲染中"; stateClass = "is-active"; }
+        else if (seg.status === "queued") { percent = 0.1; text = "排队中"; stateClass = "is-active"; }
+        else if (seg.status === "failed") { percent = 0; text = "失败"; stateClass = "is-failed"; }
+        else if (seg.status === "submitting") { percent = 0.05; text = "提交中"; stateClass = ""; }
+
+        fill.style.width = `${Math.round(percent * 100)}%`;
+        label.textContent = text;
+        node.classList.remove("is-complete", "is-active", "is-failed");
+        if (stateClass) node.classList.add(stateClass);
+
+        // 高亮当前播放句
+        node.classList.toggle("is-playing", i === currentPlayIndex && isPlaying);
+      }
+    }
+
+    async function readJsonResponse(response) {
+      const text = await response.text();
+      if (!text) {
+        return {};
+      }
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        return { detail: text };
+      }
+    }
+
+    function extractError(payload, fallback) {
+      if (!payload) {
+        return fallback;
+      }
+      if (typeof payload.detail === "string") {
+        return payload.detail;
+      }
+      if (Array.isArray(payload.detail)) {
+        return payload.detail.map((item) => item.msg || JSON.stringify(item)).join("; ");
+      }
+      return payload.error || payload.message || fallback;
+    }
+
+    function normalizePercent(value) {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return clamp(value > 1 ? value / 100 : value, 0, 1);
+      }
+
+      if (value && typeof value === "object") {
+        const nested = value.value ?? value.percent ?? value.progress ?? value.total ?? value.overall;
+        if (nested !== undefined) {
+          return normalizePercent(nested);
+        }
+      }
+
+      const number = Number(value);
+      if (Number.isFinite(number)) {
+        return normalizePercent(number);
+      }
+
+      return 0;
+    }
+
+    function deriveStageValues(stages, overall, taskStatus) {
+      const result = {};
+      const source = stages && typeof stages === "object" ? stages : {};
+
+      for (const stage of STAGES) {
+        const raw = findStageValue(source, stage.aliases);
+        if (raw !== undefined) {
+          result[stage.id] = normalizeStage(raw, taskStatus);
+        } else {
+          result[stage.id] = inferStageFromOverall(stage.id, overall, taskStatus);
+        }
+      }
+
+      return result;
+    }
+
+    function findStageValue(source, aliases) {
+      const lowerMap = new Map();
+      for (const [key, value] of Object.entries(source)) {
+        lowerMap.set(key.toLowerCase(), value);
+      }
+      for (const alias of aliases) {
+        if (lowerMap.has(alias.toLowerCase())) {
+          return lowerMap.get(alias.toLowerCase());
+        }
+      }
+      return undefined;
+    }
+
+    function normalizeStage(raw, taskStatus) {
+      if (typeof raw === "number" || (typeof raw === "string" && raw.trim() !== "" && !Number.isNaN(Number(raw)))) {
+        const value = normalizePercent(raw);
+        return {
+          percent: value,
+          label: value >= 1 ? "完成" : value > 0 ? `${Math.round(value * 100)}%` : "等待",
+          state: value >= 1 ? "complete" : value > 0 ? "active" : "pending"
+        };
+      }
+
+      if (raw && typeof raw === "object") {
+        const percent = normalizePercent(raw.progress ?? raw.percent ?? raw.value);
+        const status = String(raw.status || raw.state || "").toLowerCase();
+        const normalized = normalizeStageStatus(status, percent, taskStatus);
+        return {
+          percent: normalized.percent,
+          label: raw.label || raw.message || normalized.label,
+          state: normalized.state
+        };
+      }
+
+      return normalizeStageStatus(String(raw || "").toLowerCase(), 0, taskStatus);
+    }
+
+    function normalizeStageStatus(status, percent, taskStatus) {
+      if (["completed", "complete", "done", "success", "succeeded"].includes(status)) {
+        return { percent: 1, label: "完成", state: "complete" };
+      }
+      if (["failed", "error"].includes(status) || taskStatus === "failed") {
+        return { percent: percent || 0, label: "失败", state: "failed" };
+      }
+      if (["processing", "running", "active", "in_progress", "started"].includes(status)) {
+        return { percent: percent || 0.45, label: percent ? `${Math.round(percent * 100)}%` : "处理中", state: "active" };
+      }
+      if (["queued", "pending", "waiting", "idle", ""].includes(status)) {
+        return { percent: percent || 0, label: "等待", state: "pending" };
+      }
+      return { percent: percent || 0, label: statusMap(status), state: percent > 0 ? "active" : "pending" };
+    }
+
+    function inferStageFromOverall(stageId, overall, taskStatus) {
+      const ranges = {
+        tts: [0, 0.25],
+        musetalk: [0.25, 0.58],
+        rvm: [0.58, 0.78],
+        compose: [0.78, 1]
+      };
+
+      if (taskStatus === "completed" || taskStatus === "success" || taskStatus === "done") {
+        return { percent: 1, label: "完成", state: "complete" };
+      }
+
+      if (taskStatus === "failed" || taskStatus === "error") {
+        return { percent: 0, label: "失败", state: "failed" };
+      }
+
+      const [start, end] = ranges[stageId];
+      const local = clamp((overall - start) / (end - start), 0, 1);
+      return {
+        percent: local,
+        label: local >= 1 ? "完成" : local > 0 ? `${Math.round(local * 100)}%` : "等待",
+        state: local >= 1 ? "complete" : local > 0 ? "active" : "pending"
+      };
+    }
+
+    function renderStages() {
+      stageList.innerHTML = STAGES.map((stage) => `
+        <div class="stage" data-stage="${stage.id}">
+          <div class="stage-name">${stage.label}</div>
+          <div class="track" aria-hidden="true">
+            <div class="fill"></div>
+          </div>
+          <div class="stage-status">等待</div>
+        </div>
+      `).join("");
+    }
+
+    function updateStages(values, taskStatus) {
+      for (const stage of STAGES) {
+        const node = stageList.querySelector(`[data-stage="${stage.id}"]`);
+        if (!node) {
+          continue;
+        }
+        const value = values[stage.id] || inferStageFromOverall(stage.id, 0, taskStatus);
+        const percent = clamp(value.percent || 0, 0, 1);
+        node.querySelector(".fill").style.width = `${Math.round(percent * 100)}%`;
+        node.querySelector(".stage-status").textContent = value.label || `${Math.round(percent * 100)}%`;
+        node.classList.toggle("is-complete", value.state === "complete");
+        node.classList.toggle("is-active", value.state === "active");
+        node.classList.toggle("is-failed", value.state === "failed");
+      }
+    }
+
+    function completeStages() {
+      const completed = Object.fromEntries(
+        STAGES.map((stage) => [stage.id, { percent: 1, label: "完成", state: "complete" }])
+      );
+      updateStages(completed, "completed");
+    }
+
+    function updateOverall(percent) {
+      const safe = clamp(percent, 0, 1);
+      overallFill.style.width = `${Math.round(safe * 100)}%`;
+      overallPercent.textContent = `${Math.round(safe * 100)}%`;
+    }
+
+    function playOutput(outputUrl) {
+      if (!outputUrl) {
+        showMessage("任务完成，但响应缺少 output_url。", "error");
+        return;
+      }
+
+      const url = apiUrl(outputUrl);
+      emptyVideo.classList.add("is-hidden");
+      resultVideo.classList.remove("is-hidden");
+      resultVideo.src = url;
+      resultVideo.load();
+
+      const playPromise = resultVideo.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+          showMessage("视频已加载，浏览器阻止了自动播放，请点击播放。", "info");
+        });
+      }
+    }
+
+    function setBusy(isBusy) {
+      submitBtn.disabled = isBusy;
+      backgroundType.disabled = isBusy;
+      apiBaseInput.disabled = isBusy;
+    }
+
+    function setStatus(text) {
+      statusLine.innerHTML = text ? escapeHtml(text) : "";
+    }
+
+    function showMessage(text, type) {
+      message.textContent = text || "";
+      message.className = "message";
+      if (text) {
+        message.classList.add("is-visible", type || "info");
+      }
+    }
+
+    function failUi(text) {
+      setStatus("任务异常");
+      showMessage(text || "任务失败。", "error");
+    }
+
+    function resetAll() {
+      stopAllPolling();
+      if (abortController) {
+        abortController.abort();
+      }
+      taskForm.reset();
+      apiBaseInput.value = getInitialApiBase();
+      currentTaskId = "";
+      segments = [];
+      currentPlayIndex = 0;
+      isPlaying = false;
+      taskIdLine.textContent = "";
+      taskIdLine.classList.remove("is-visible");
+      setBusy(false);
+      setStatus("等待提交任务");
+      showMessage("", "");
+      resetProgress();
+      resetVideo();
+      checkHealth();
+    }
+
+    function resetProgress() {
+      updateOverall(0);
+      const initial = Object.fromEntries(
+        STAGES.map((stage) => [stage.id, { percent: 0, label: "等待", state: "pending" }])
+      );
+      updateStages(initial, "");
+    }
+
+    function resetVideo() {
+      resultVideo.pause();
+      resultVideo.removeAttribute("src");
+      resultVideo.load();
+      resultVideo.classList.add("is-hidden");
+      emptyVideo.classList.remove("is-hidden");
+    }
+
+    function stopPolling() {
+      if (pollTimer) {
+        window.clearInterval(pollTimer);
+        pollTimer = 0;
+      }
+    }
+
+    function statusMap(status) {
+      const map = {
+        queued: "排队中",
+        pending: "等待中",
+        processing: "处理中",
+        running: "处理中",
+        completed: "完成",
+        complete: "完成",
+        success: "完成",
+        done: "完成",
+        failed: "失败",
+        error: "失败"
+      };
+      return map[status] || status || "未知";
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# 依赖已统一管理到 pyproject.toml。安装方式：
+#   pip install -e "."          # 核心（等同于本文件）
+#   pip install -e ".[agent]"   # 核心 + Agent 层
+#   pip install -e ".[flashhead,musetalk]"  # 核心 + FlashHead + MuseTalk
+#   可选分组：agent, flashhead, musetalk, segment, cosyvoice, indextts
+# ── Web / API ──────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+pydantic==2.7.1
+pydantic-settings==2.3.0
+cryptography==42.0.8              # profile API key 本地加密保存
+
+# ── 异步任务编排 ───────────────────────────────────────────
+celery==5.4.0
+redis==5.0.4
+
+# ── 媒体处理 ───────────────────────────────────────────────
+opencv-python==4.9.0.80
+numpy==1.26.4
+imageio-ffmpeg==0.5.1          # 自带 ffmpeg 二进制，无需系统安装
+soundfile==0.12.1              # 读写 wav
+
+# ── 测试 ───────────────────────────────────────────────────
+pytest==8.2.0
+httpx==0.27.0                  # FastAPI TestClient 依赖
+
+# ── 真实模型后端（可选，Mock 阶段不需要）──────────────────
+# torch / musetalk / robust-video-matting / cosyvoice / whisperx
+# 见 docs/digital-human-design.md「技术栈」一节，按需安装

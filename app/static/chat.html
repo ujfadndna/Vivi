@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>实时数字人对话</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --panel: #15191f;
+      --panel-2: #1b2028;
+      --line: rgba(255,255,255,.12);
+      --text: #eef2f7;
+      --muted: #98a2b3;
+      --accent: #3dd6b5;
+      --accent-2: #f2c15d;
+      --danger: #ff6b7a;
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      background: #0b0d10;
+      color: var(--text);
+    }
+
+    button, textarea, input { font: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(420px, 1fr);
+      min-height: 100vh;
+    }
+
+    .chat {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      min-height: 100vh;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 64px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .title {
+      min-width: 0;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent-2);
+    }
+
+    .status.ok .dot { background: var(--accent); }
+    .status.bad .dot { background: var(--danger); }
+
+    .messages {
+      overflow-y: auto;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .bubble {
+      max-width: 86%;
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      line-height: 1.58;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .bubble.user {
+      align-self: flex-end;
+      background: #24453e;
+      border-color: rgba(61,214,181,.25);
+    }
+
+    .bubble.ai {
+      align-self: flex-start;
+      background: var(--panel-2);
+    }
+
+    .bubble.meta {
+      align-self: center;
+      max-width: 100%;
+      padding: 7px 10px;
+      color: var(--muted);
+      background: transparent;
+      border-color: transparent;
+      font-size: 12px;
+    }
+
+    #progressHint {
+      align-self: flex-start;
+      max-width: 86%;
+      margin-top: -8px;
+      padding: 0 4px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 14px;
+      border-top: 1px solid var(--line);
+      background: rgba(0,0,0,.12);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 48px;
+      max-height: 150px;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      outline: none;
+      color: var(--text);
+      background: #10141a;
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      border-color: rgba(61,214,181,.65);
+      box-shadow: 0 0 0 3px rgba(61,214,181,.12);
+    }
+
+    button {
+      width: 92px;
+      min-height: 48px;
+      border: 0;
+      border-radius: var(--radius);
+      color: #06110e;
+      background: var(--accent);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100vh;
+      background: #0b0d10;
+    }
+
+    .stage-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 64px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      background: #11151b;
+    }
+
+    .stage-title {
+      font-weight: 760;
+    }
+
+    .task {
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 46vw;
+    }
+
+    .viewport {
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      min-height: 0;
+    }
+
+    .screen {
+      position: relative;
+      width: min(100%, 980px);
+      aspect-ratio: 16 / 9;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px),
+        #050607;
+      background-size: 28px 28px;
+    }
+
+    canvas, video {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #050607;
+    }
+
+    video.hidden,
+    canvas.hidden {
+      display: none;
+    }
+
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .placeholder.hidden { display: none; }
+
+    /* 加载动画覆盖层 */
+    #warmupOverlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: #050607;
+      z-index: 10;
+      transition: opacity .4s ease;
+    }
+    #warmupOverlay.hidden { display: none; }
+
+    .warmup-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 38%, #2a4f46, #0b0d10);
+      box-shadow: 0 0 0 0 rgba(61,214,181,.6);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(61,214,181,.5); }
+      50%      { box-shadow: 0 0 0 18px rgba(61,214,181,.0); }
+    }
+
+    .warmup-text {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: .02em;
+    }
+
+    .warmup-dots::after {
+      content: '';
+      animation: dots 1.4s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%  { content: ''; }
+      25% { content: '.'; }
+      50% { content: '..'; }
+      75% { content: '...'; }
+    }
+
+    .timeline {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 12px 18px 18px;
+      border-top: 1px solid var(--line);
+      background: #11151b;
+    }
+
+    .chip {
+      flex: 0 0 auto;
+      max-width: 220px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      background: var(--panel-2);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chip.active {
+      color: var(--text);
+      border-color: rgba(61,214,181,.42);
+      background: #18332f;
+    }
+
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      .chat { min-height: 52vh; border-right: 0; border-bottom: 1px solid var(--line); }
+      .stage { min-height: 48vh; }
+      .task { max-width: 58vw; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="chat">
+      <header class="header">
+        <div class="title">实时对话</div>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
+          <input id="renderToggle" type="checkbox" style="accent-color:var(--accent)">视频渲染
+        </label>
+        <div id="connStatus" class="status"><span class="dot"></span><span>待连接</span></div>
+      </header>
+      <div id="messages" class="messages"></div>
+      <form id="composer" class="composer">
+        <textarea id="input" placeholder="输入你想说的话" required></textarea>
+        <button id="send" type="submit">发送</button>
+      </form>
+    </section>
+
+    <section class="stage">
+      <header class="stage-head">
+        <div class="stage-title">数字人视频</div>
+        <div id="taskLabel" class="task">等待渲染任务</div>
+      </header>
+      <div class="viewport">
+        <div class="screen">
+          <div id="placeholder" class="placeholder hidden">AI 回复生成后，右侧将自动播放数字人视频。</div>
+          <div id="warmupOverlay"><div class="warmup-avatar"></div><div class="warmup-text">数字人加载中<span class="warmup-dots"></span></div></div>
+          <canvas id="canvas" class="hidden"></canvas>
+          <video id="videoIdle" playsinline muted loop preload="auto" src="/static/avatar_idle.mp4" style="position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;background:#050607;"></video>
+          <video id="videoA" class="hidden" playsinline preload="auto"></video>
+          <video id="videoB" class="hidden" playsinline preload="auto"></video>
+        </div>
+      </div>
+      <div id="timeline" class="timeline"></div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const messages = $("#messages");
+    const composer = $("#composer");
+    const input = $("#input");
+    const send = $("#send");
+    const connStatus = $("#connStatus");
+    const taskLabel = $("#taskLabel");
+    const placeholder = $("#placeholder");
+    const warmupOverlay = $("#warmupOverlay");
+    const canvas = $("#canvas");
+    const videoIdle = $("#videoIdle");
+    const ctx = canvas.getContext("2d");
+    const videoA = $("#videoA");
+    const videoB = $("#videoB");
+    const timeline = $("#timeline");
+    const END_PRELOAD_SECONDS = 0.3;
+    const HAVE_CURRENT_DATA = 2;
+    const videoSlots = [
+      { name: "A", element: videoA, index: null, videoUrl: "", loaded: false },
+      { name: "B", element: videoB, index: null, videoUrl: "", loaded: false }
+    ];
+
+    const state = {
+      userId: localStorage.getItem("chatUserId") || `user_${crypto.randomUUID()}`,
+      sessionId: localStorage.getItem("chatSessionId") || "",
+      renderVideo: false,
+      wsMap: {},
+      frameQueue: [],
+      animating: false,
+      segments: [],
+      activeIndex: -1,
+      nextPlayIndex: 0,
+      currentSlotIndex: -1,
+      waitingForVideo: false,
+      silentAvatarUrl: "/static/avatar_silent.mp4",
+      silentLooping: false,
+      hasFirstToken: false,
+      progressHint: null,
+      busy: false
+    };
+    localStorage.setItem("chatUserId", state.userId);
+    // 预热期间禁用发送
+    send.disabled = true;
+    placeholder.classList.add("hidden");
+
+    composer.addEventListener("submit", onSubmit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        composer.requestSubmit();
+      }
+    });
+    videoSlots.forEach((slot, index) => {
+      slot.element.addEventListener("canplay", () => {
+        markSlotLoaded(index);
+      });
+      slot.element.addEventListener("loadeddata", () => {
+        markSlotLoaded(index);
+      });
+      slot.element.addEventListener("timeupdate", () => maybeSwitchNearEnd(index));
+      slot.element.addEventListener("ended", () => handleVideoEnded(index));
+    });
+    const renderToggle = $("#renderToggle");
+    renderToggle.addEventListener("change", () => { state.renderVideo = renderToggle.checked; });
+    checkHealth();
+    warmupOnLoad();
+
+    async function onSubmit(event) {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text || state.busy) return;
+
+      state.busy = true;
+      send.disabled = true;
+      input.value = "";
+      resetRound();
+      addBubble("user", text);
+      const aiBubble = addBubble("ai", "");
+      state.progressHint = addBubble("meta", "");
+      state.progressHint.id = "progressHint";
+      setProgress("⏳ AI 思考中…");
+
+      try {
+        const response = await fetch("/agent/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: state.userId,
+            session_id: state.sessionId || null,
+            text,
+            render_video: state.renderVideo
+          })
+        });
+        if (!response.ok || !response.body) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        await readSse(response.body, (event) => handleAgentEvent(event, aiBubble));
+      } catch (error) {
+        setStatus("bad", "请求失败");
+        setProgress(error.message || "请求失败");
+        addBubble("meta", error.message || "请求失败");
+      } finally {
+        state.busy = false;
+        send.disabled = false;
+        input.focus();
+      }
+    }
+
+    async function readSse(stream, onEvent) {
+      const reader = stream.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+        for (const part of parts) {
+          const line = part.split("\n").find((item) => item.startsWith("data:"));
+          if (!line) continue;
+          try {
+            onEvent(JSON.parse(line.slice(5).trim()));
+          } catch (_) {}
+        }
+      }
+    }
+
+    function handleAgentEvent(event, aiBubble) {
+      if (event.type === "session") {
+        state.sessionId = event.session_id || state.sessionId;
+        localStorage.setItem("chatSessionId", state.sessionId);
+        if (event.identity_disclosure) addBubble("meta", event.identity_disclosure);
+        return;
+      }
+      if (event.type === "token") {
+        if (!state.hasFirstToken) {
+          state.hasFirstToken = true;
+          setProgress("💬 AI 回复中…");
+        }
+        aiBubble.textContent += event.text || "";
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+      if (event.type === "render_start") {
+        if (!state.renderVideo) return;
+        const segment = {
+          index: event.index,
+          sentence: event.sentence,
+          taskId: event.task_id,
+          status: "streaming",
+          videoUrl: ""
+        };
+        state.segments[event.index] = segment;
+        renderTimeline();
+        setProgress(`🎬 第${event.index + 1}句渲染中… (TTS完成，MuseTalk处理中)`);
+        openFrameStream(event.task_id, event.index);
+        // 不在 render_start 预加载：文件尚未写完，预加载会 404 使 video 进入错误态
+        return;
+      }
+      if (event.type === "render_done") {
+        if (!state.renderVideo) return;
+        const segment = state.segments[event.index] || {
+          index: event.index,
+          sentence: event.sentence,
+          taskId: event.task_id
+        };
+        if (segment.taskId && segment.taskId !== event.task_id && event.index < state.nextPlayIndex) state.nextPlayIndex = event.index;
+        segment.taskId = event.task_id || segment.taskId;
+        segment.status = event.status;
+        segment.videoUrl = event.video_url || "";
+        state.segments[event.index] = segment;
+        renderTimeline();
+        if (event.status === "completed") {
+          setProgress(`✅ 第${event.index + 1}句完成，播放中`);
+          const isNextSegment = event.index === state.nextPlayIndex;
+          if (isNextSegment) prepareSegment(event.index);
+          if ((state.currentSlotIndex === -1 || state.waitingForVideo) && isNextSegment) {
+            tryPlayNextSegment({ allowDuringPlayback: state.waitingForVideo });
+          }
+        }
+        return;
+      }
+      if (event.type === "done") {
+        setProgress("✅ 全部完成");
+        maybeShowPlaceholder();
+      }
+      if (event.type === "error") {
+        setProgress(event.message || "请求失败");
+      }
+    }
+
+    function openFrameStream(taskId, index) {
+      if (!taskId) return;
+      if (state.wsMap[taskId]) state.wsMap[taskId].close();
+      const ws = new WebSocket(
+        `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws/stream?task_id=${encodeURIComponent(taskId)}`
+      );
+      state.wsMap[taskId] = ws;
+      state.activeIndex = index;
+      ws.onmessage = (message) => {
+        const event = JSON.parse(message.data);
+        if (event.type === "frame_batch" && Array.isArray(event.frames)) {
+          setProgress(`🎬 第${index + 1}句渲染中… (生成中，请稍候)`);
+          // canvas 帧流预览已禁用：避免无声画面造成音画先行感知
+          // showCanvas();
+          // drawFrames(event.frames);
+        }
+      };
+      ws.onopen = () => setStatus("ok", "帧流已连接");
+      ws.onerror = () => setStatus("bad", "帧流异常");
+      ws.onclose = () => {
+        if (state.wsMap[taskId] === ws) delete state.wsMap[taskId];
+        setStatus("ok", "就绪");
+      };
+    }
+
+    function drawFrames(frames) {
+      for (const frame of frames) {
+        state.frameQueue.push(frame);
+      }
+      if (!state.animating) {
+        state.animating = true;
+        let lastTime = 0;
+        const FRAME_INTERVAL = 40;
+        const loop = (timestamp) => {
+          if (state.frameQueue.length === 0) {
+            state.animating = false;
+            return;
+          }
+          if (timestamp - lastTime >= FRAME_INTERVAL) {
+            lastTime = timestamp;
+            drawJpeg(state.frameQueue.shift());
+          }
+          window.requestAnimationFrame(loop);
+        };
+        window.requestAnimationFrame(loop);
+      }
+    }
+
+    function drawJpeg(base64) {
+      const img = new Image();
+      img.onload = () => {
+        canvas.classList.remove("hidden");
+        if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = `data:image/jpeg;base64,${base64}`;
+    }
+
+    function prepareSegment(index) {
+      const seg = state.segments[index];
+      if (!seg || seg.status !== "completed" || !seg.videoUrl) return false;
+      if (videoSlots.some((slot) => slot.index === index && slot.videoUrl === seg.videoUrl)) return true;
+
+      const slotIndex = pickBufferSlot(index);
+      const slot = videoSlots[slotIndex];
+      slot.element.pause();
+      slot.index = index;
+      slot.videoUrl = seg.videoUrl;
+      slot.loaded = false;
+      slot.element.src = seg.videoUrl;
+      slot.element.load();
+      return true;
+    }
+
+    function tryPlayNextSegment(options = {}) {
+      const allowDuringPlayback = options.allowDuringPlayback === true;
+      const waitIfMissing = options.waitIfMissing !== false;
+      if (state.currentSlotIndex !== -1 && !allowDuringPlayback) return false;
+
+      const seg = state.segments[state.nextPlayIndex];
+      if (!seg || seg.status !== "completed" || !seg.videoUrl) {
+        if (waitIfMissing) state.waitingForVideo = true;
+        return false;
+      }
+
+      prepareSegment(state.nextPlayIndex);
+      const slotIndex = slotIndexForSegment(state.nextPlayIndex);
+      const slot = videoSlots[slotIndex];
+      if (!slot || !isSlotReady(slot)) {
+        if (waitIfMissing) state.waitingForVideo = true;
+        return false;
+      }
+
+      playSlot(slotIndex);
+      return true;
+    }
+
+    function playSlot(slotIndex) {
+      stopSilentLoop();
+      const slot = videoSlots[slotIndex];
+      if (!slot || slot.index !== state.nextPlayIndex || !isSlotReady(slot)) return false;
+
+      const previousSlotIndex = state.currentSlotIndex;
+      closeSegmentFrameStream(slot.index);
+      showVideoSlot(slotIndex);
+      state.currentSlotIndex = slotIndex;
+      state.activeIndex = slot.index;
+      state.waitingForVideo = false;
+      renderTimeline();
+      setProgress(`✅ 第${slot.index + 1}句完成，播放中`);
+      state.animating = false;
+      state.frameQueue = [];
+      slot.element.currentTime = 0;
+      slot.element.muted = false;
+      slot.element.play().catch(() => {});
+      if (previousSlotIndex !== -1 && previousSlotIndex !== slotIndex) {
+        videoSlots[previousSlotIndex].element.pause();
+      }
+      state.nextPlayIndex = slot.index + 1;
+      prepareSegment(state.nextPlayIndex);
+      return true;
+    }
+
+    function maybeSwitchNearEnd(slotIndex) {
+      if (slotIndex !== state.currentSlotIndex) return;
+      const currentVideo = videoSlots[slotIndex].element;
+      if (!Number.isFinite(currentVideo.duration) || currentVideo.duration <= 0) return;
+      if (currentVideo.duration - currentVideo.currentTime >= END_PRELOAD_SECONDS) return;
+      tryPlayNextSegment({ allowDuringPlayback: true });
+    }
+
+    function handleVideoEnded(slotIndex) {
+      if (slotIndex !== state.currentSlotIndex) return;
+      if (!tryPlayNextSegment({ allowDuringPlayback: true })) {
+        returnToIdle();
+      }
+    }
+
+    function returnToIdle() {
+      state.currentSlotIndex = -1;
+      state.silentLooping = false;
+      videoSlots.forEach((slot) => {
+        slot.element.pause();
+        slot.element.classList.add("hidden");
+      });
+      videoIdle.style.display = "block";
+      videoIdle.play().catch(() => {});
+    }
+
+    function startSilentLoop() {
+      if (state.silentLooping) return;
+      fetch(state.silentAvatarUrl, { method: "HEAD" })
+        .then((response) => {
+          if (!response.ok || state.silentLooping || !state.waitingForVideo) return;
+          const inactiveSlotIndex = videoSlots.findIndex((slot, slotIndex) =>
+            slotIndex !== state.currentSlotIndex && slot.index !== state.nextPlayIndex
+          );
+          if (inactiveSlotIndex === -1) return;
+          const slot = videoSlots[inactiveSlotIndex];
+          slot.element.src = state.silentAvatarUrl;
+          slot.element.muted = true;
+          slot.element.loop = true;
+          slot.element.load();
+          slot.element.play().catch(() => {});
+          showVideoSlot(inactiveSlotIndex);
+          state.silentLooping = true;
+          state.currentSlotIndex = inactiveSlotIndex;
+        })
+        .catch(() => {});
+    }
+
+    function stopSilentLoop() {
+      if (!state.silentLooping) return;
+      videoSlots.forEach((slot) => {
+        if (slot.element.loop) {
+          slot.element.loop = false;
+        }
+      });
+      returnToIdle();
+    }
+
+    function pickBufferSlot(index) {
+      const existing = slotIndexForSegment(index);
+      if (existing !== -1 && videoSlots[existing].videoUrl === state.segments[index]?.videoUrl) return existing;
+      const inactive = videoSlots.findIndex((_, slotIndex) => slotIndex !== state.currentSlotIndex);
+      return inactive === -1 ? 0 : inactive;
+    }
+
+    function slotIndexForSegment(index) {
+      return videoSlots.findIndex((slot) => slot.index === index);
+    }
+
+    function isSlotReady(slot) {
+      return slot.loaded || slot.element.readyState >= HAVE_CURRENT_DATA;
+    }
+
+    function markSlotLoaded(slotIndex) {
+      const slot = videoSlots[slotIndex];
+      slot.loaded = true;
+      if (state.waitingForVideo && slot.index === state.nextPlayIndex) {
+        playSlot(slotIndex);
+      }
+    }
+
+    function closeFrameStreams() {
+      for (const [id, ws] of Object.entries(state.wsMap)) {
+        ws.close();
+      }
+      state.wsMap = {};
+    }
+
+    function closeSegmentFrameStream(index) {
+      const taskId = state.segments[index]?.taskId;
+      const ws = taskId ? state.wsMap[taskId] : null;
+      if (ws) {
+        ws.close();
+        delete state.wsMap[taskId];
+      }
+      state.animating = false;
+      state.frameQueue = [];
+    }
+
+    function renderTimeline() {
+      timeline.innerHTML = state.segments
+        .filter(Boolean)
+        .map((seg) => `
+          <div class="chip ${seg.index === state.activeIndex ? "active" : ""}" title="${escapeHtml(seg.sentence || "")}">
+            ${seg.index + 1}. ${escapeHtml(statusText(seg.status))}
+          </div>
+        `).join("");
+    }
+
+    function addBubble(kind, text) {
+      const node = document.createElement("div");
+      node.className = `bubble ${kind}`;
+      node.textContent = text;
+      messages.appendChild(node);
+      messages.scrollTop = messages.scrollHeight;
+      return node;
+    }
+
+    function resetRound() {
+      state.segments = [];
+      state.activeIndex = -1;
+      state.nextPlayIndex = 0;
+      state.currentSlotIndex = -1;
+      state.waitingForVideo = false;
+      state.silentLooping = false;
+      state.hasFirstToken = false;
+      if (state.progressHint) {
+        state.progressHint.removeAttribute("id");
+      }
+      state.progressHint = null;
+      timeline.innerHTML = "";
+      taskLabel.textContent = "等待渲染任务";
+      closeFrameStreams();
+      state.frameQueue = [];
+      videoSlots.forEach((slot) => {
+        slot.element.pause();
+        slot.element.loop = false;
+        slot.element.removeAttribute("src");
+        slot.element.load();
+        slot.element.classList.add("hidden");
+        slot.index = null;
+        slot.videoUrl = "";
+        slot.loaded = false;
+      });
+      canvas.classList.add("hidden");
+      videoIdle.style.display = "block";
+      videoIdle.play().catch(() => {});
+    }
+
+    function showCanvas() {
+      if (state.currentSlotIndex !== -1) return;
+      placeholder.classList.add("hidden");
+      videoSlots.forEach((slot) => slot.element.classList.add("hidden"));
+      canvas.classList.remove("hidden");
+    }
+
+    function showVideoSlot(activeSlotIndex) {
+      placeholder.classList.add("hidden");
+      canvas.classList.add("hidden");
+      videoIdle.style.display = "none";
+      videoSlots.forEach((slot, slotIndex) => {
+        if (slotIndex === activeSlotIndex) {
+          slot.element.classList.remove("hidden");
+        }
+      });
+      requestAnimationFrame(() => {
+        videoSlots.forEach((slot, slotIndex) => {
+          if (slotIndex !== activeSlotIndex) {
+            slot.element.classList.add("hidden");
+          }
+        });
+      });
+    }
+
+    function maybeShowPlaceholder() {
+      const hasWork = state.segments.some((seg) => seg && (seg.status === "streaming" || (seg.status === "completed" && seg.index >= state.nextPlayIndex)));
+      const hasPlayingVideo = state.currentSlotIndex !== -1 && !videoSlots[state.currentSlotIndex].element.paused;
+      if (hasWork || hasPlayingVideo || state.frameQueue.length) return;
+      canvas.classList.add("hidden");
+      returnToIdle();
+    }
+
+    async function checkHealth() {
+      try {
+        const response = await fetch("/health", { cache: "no-store" });
+        setStatus(response.ok ? "ok" : "bad", response.ok ? "就绪" : "服务异常");
+      } catch (_) {
+        setStatus("bad", "服务不可用");
+      }
+    }
+
+    async function warmupOnLoad() {
+      // 静默预热：发一条不渲染视频的请求，触发 TTS + FlashHead 热加载
+      // 用户看到加载动画，预热完成后自动消失
+      try {
+        const res = await fetch("/agent/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: state.userId, text: "你好", render_video: false })
+        });
+        if (res.body) {
+          const reader = res.body.getReader();
+          while (true) {
+            const { done } = await reader.read();
+            if (done) break;
+          }
+        }
+      } catch (_) { /* 预热失败不影响正常使用 */ }
+      warmupOverlay.classList.add("hidden");
+      // 预热完成，启动待机循环视频
+      videoIdle.style.display = "block";
+      videoIdle.play().catch(() => {});
+      setStatus("ok", "就绪");
+      send.disabled = false;
+      input.focus();
+    }
+
+    function setStatus(kind, text) {
+      connStatus.className = `status ${kind || ""}`;
+      connStatus.querySelector("span:last-child").textContent = text;
+    }
+
+    function setProgress(text) {
+      taskLabel.textContent = text;
+      if (state.progressHint) {
+        state.progressHint.textContent = text;
+        messages.scrollTop = messages.scrollHeight;
+      }
+    }
+
+    function statusText(status) {
+      return {
+        streaming: "流式预览",
+        completed: "已完成",
+        failed: "失败"
+      }[status] || "处理中";
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Her Sensor Bridge</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101418;
+      --panel: #181f25;
+      --panel-2: #202932;
+      --text: #eef3f8;
+      --muted: #9eabb7;
+      --accent: #2fbf71;
+      --warning: #e6a23c;
+      --error: #e05252;
+      --border: #2f3a44;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100svh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    main {
+      width: min(100%, 560px);
+      min-height: 100svh;
+      padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.15;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+      padding: 0 12px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 64px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #07110b;
+      font: inherit;
+      font-size: 20px;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--warning);
+      flex: 0 0 auto;
+    }
+
+    .status.connected .dot {
+      background: var(--accent);
+    }
+
+    .status.error .dot {
+      background: var(--error);
+    }
+
+    .readout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .tile {
+      min-height: 78px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel-2);
+    }
+
+    .tile span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .tile strong {
+      display: block;
+      font-size: 17px;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    video {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #050607;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Her Sensor Bridge</h1>
+
+    <section>
+      <label for="sessionId">Session ID</label>
+      <input id="sessionId" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </section>
+
+    <button id="connectButton" type="button">Connect</button>
+
+    <div id="status" class="status">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="statusText">Idle</span>
+    </div>
+
+    <div class="readout" aria-live="polite">
+      <div class="tile">
+        <span>Orientation</span>
+        <strong id="orientationText">alpha 0, beta 0, gamma 0</strong>
+      </div>
+      <div class="tile">
+        <span>Acceleration</span>
+        <strong id="accelText">x 0, y 0, z 0</strong>
+      </div>
+      <div class="tile">
+        <span>Frames</span>
+        <strong id="framesText">0</strong>
+      </div>
+      <div class="tile">
+        <span>Camera</span>
+        <strong id="cameraText">Not requested</strong>
+      </div>
+    </div>
+
+    <video id="preview" playsinline muted autoplay></video>
+  </main>
+
+  <script>
+    const sessionInput = document.getElementById("sessionId");
+    const connectButton = document.getElementById("connectButton");
+    const statusEl = document.getElementById("status");
+    const statusText = document.getElementById("statusText");
+    const orientationText = document.getElementById("orientationText");
+    const accelText = document.getElementById("accelText");
+    const framesText = document.getElementById("framesText");
+    const cameraText = document.getElementById("cameraText");
+    const preview = document.getElementById("preview");
+
+    let ws = null;
+    let latestOrientation = null;
+    let latestAccel = null;
+    let frameCount = 0;
+    let sendTimer = null;
+    let lastShakeAt = 0;
+
+    const params = new URLSearchParams(window.location.search);
+    sessionInput.value = params.get("session_id") || params.get("session") || "default";
+
+    function setStatus(text, state) {
+      statusText.textContent = text;
+      statusEl.classList.toggle("connected", state === "connected");
+      statusEl.classList.toggle("error", state === "error");
+    }
+
+    function round(value) {
+      if (typeof value !== "number" || Number.isNaN(value)) {
+        return 0;
+      }
+      return Math.round(value * 100) / 100;
+    }
+
+    function socketUrl(sessionId) {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${protocol}//${window.location.host}/ws/sensor/${encodeURIComponent(sessionId)}`;
+    }
+
+    function sendFrame(frame) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      ws.send(JSON.stringify({
+        session_id: sessionInput.value.trim(),
+        ts: Date.now(),
+        ...frame
+      }));
+      frameCount += 1;
+      framesText.textContent = String(frameCount);
+    }
+
+    async function requestMotionPermission() {
+      const permissionAPIs = [
+        window.DeviceMotionEvent,
+        window.DeviceOrientationEvent
+      ];
+
+      for (const api of permissionAPIs) {
+        if (api && typeof api.requestPermission === "function") {
+          const result = await api.requestPermission();
+          if (result !== "granted") {
+            throw new Error("Sensor permission denied");
+          }
+        }
+      }
+    }
+
+    async function requestCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        cameraText.textContent = "Unavailable";
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+        preview.srcObject = stream;
+        cameraText.textContent = "Ready";
+      } catch (error) {
+        cameraText.textContent = "Denied";
+      }
+    }
+
+    function attachSensors() {
+      window.addEventListener("deviceorientation", (event) => {
+        latestOrientation = {
+          alpha: round(event.alpha),
+          beta: round(event.beta),
+          gamma: round(event.gamma)
+        };
+        orientationText.textContent = `alpha ${latestOrientation.alpha}, beta ${latestOrientation.beta}, gamma ${latestOrientation.gamma}`;
+      }, true);
+
+      window.addEventListener("devicemotion", (event) => {
+        const accel = event.accelerationIncludingGravity || event.acceleration;
+        if (!accel) {
+          return;
+        }
+        latestAccel = {
+          x: round(accel.x),
+          y: round(accel.y),
+          z: round(accel.z)
+        };
+        accelText.textContent = `x ${latestAccel.x}, y ${latestAccel.y}, z ${latestAccel.z}`;
+
+        const magnitude = Math.sqrt(
+          (accel.x || 0) * (accel.x || 0) +
+          (accel.y || 0) * (accel.y || 0) +
+          (accel.z || 0) * (accel.z || 0)
+        );
+        const now = Date.now();
+        if (magnitude > 18 && now - lastShakeAt > 500) {
+          lastShakeAt = now;
+          sendFrame({ type: "accel", ...latestAccel, magnitude: round(magnitude) });
+        }
+      }, true);
+    }
+
+    function startOrientationLoop() {
+      window.clearInterval(sendTimer);
+      sendTimer = window.setInterval(() => {
+        if (latestOrientation) {
+          sendFrame({ type: "gyro", ...latestOrientation });
+        }
+      }, 50);
+    }
+
+    function connectSocket() {
+      return new Promise((resolve, reject) => {
+        const sessionId = sessionInput.value.trim() || "default";
+        ws = new WebSocket(socketUrl(sessionId));
+
+        ws.addEventListener("open", () => {
+          setStatus(`Connected: ${sessionId}`, "connected");
+          resolve();
+        });
+
+        ws.addEventListener("close", () => {
+          setStatus("Disconnected", "error");
+          window.clearInterval(sendTimer);
+        });
+
+        ws.addEventListener("error", () => {
+          setStatus("WebSocket error", "error");
+          reject(new Error("WebSocket error"));
+        });
+      });
+    }
+
+    connectButton.addEventListener("click", async () => {
+      connectButton.disabled = true;
+      setStatus("Requesting permissions", "idle");
+      try {
+        await requestMotionPermission();
+        await requestCamera();
+        attachSensors();
+        setStatus("Connecting", "idle");
+        await connectSocket();
+        startOrientationLoop();
+      } catch (error) {
+        setStatus(error.message || "Connection failed", "error");
+        connectButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
