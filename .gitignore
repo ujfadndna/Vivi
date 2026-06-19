@@ -29,6 +29,7 @@ server.log
 checkpoints/
 models/
 model/
+third_party/
 models.zip
 *.zip
 *.pth
