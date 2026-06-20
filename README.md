@@ -2,6 +2,11 @@
 
 <p align="center">
   <b>一个可本地运行、可接云端模型的 2D 数字人桌面应用</b>
+  
+
+https://github.com/user-attachments/assets/10781ed2-54cc-4fdd-9fd9-8525774b84e0
+
+
 </p>
 
 <p align="center">
